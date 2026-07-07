@@ -1,0 +1,17 @@
+.DS_Store
+
+target
+release/
+build/
+build*/
+.cache
+.cmake/
+
+.boardcode
+.theia
+.vscode
+.zed
+.pio
+
+__cmake*
+*.log
