@@ -20,10 +20,15 @@ class BoardBackend {
     // all data to be sent, this will likely get redone with canbus implementation
     volatile double WheelRPM  = 0;
     volatile double EngineRPM = 0;
+    volatile double FRShock = 0;
+    volatile double FLShock = 0;
+    volatile double RRShock = 0;
+    volatile double RLShock = 0;
 
   private:
     void                     SendData(const char* msg);
     void                     ReceiveData();
+    bool                     ParseFrame(MbrCanMessage& frame);
     const char*              m_SSID;
     const char*              m_Password;
     char                     m_Msg[200];
@@ -38,6 +43,8 @@ class BoardBackend {
     SDCard                   m_Sd;
     RPMCollector             m_WheelRC;
     RPMCollector             m_EngineRC;
+    CanBusBackend            m_Canbus;
+    MbrCanMessage            m_IncomingFrame;
     char                     m_FileIndex[MAX_FILES][MAX_NAME_LEN]{};
     int                      m_FileCount = 0;
     std::vector<std::string> m_FileNames;

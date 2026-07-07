@@ -21,7 +21,7 @@ bool CanBusBackend::StartCAN() {
 bool CanBusBackend::SendCAN(const MbrCanMessage& msg) {
     #if defined(ARDUINO_ARCH_ESP32)
         // Convert MbrCanMessage to ESP32 TWAI format and send
-        CanFrame esp32frame = DBCtoCAN(msg);
+        CanFrame esp32frame = MBRtoTWAI(msg);
         if (ESP32Can.writeFrame(esp32frame)){
             m_Operational = true;
             return true;
@@ -40,7 +40,7 @@ std::optional<MbrCanMessage> CanBusBackend::ReceiveCAN(){
         // Interpret CAN message and translate to ESP32 format
         CanFrame incoming_msg;
         if (ESP32Can.readFrame(incoming_msg, 0)){
-            return DBCtoMBR(incoming_msg);
+            return TWAItoMBR(incoming_msg);
         }
         return std::nullopt;
     #elif defined(ARDUINO_ARCH_STM32)
@@ -51,18 +51,23 @@ std::optional<MbrCanMessage> CanBusBackend::ReceiveCAN(){
 }
 
 #if defined (ARDUINO_ARCH_ESP32)
-CanFrame CanBusBackend::DBCtoCAN(const MbrCanMessage& msg){
-    CanFrame translated;
-    //input dbc cpp code
+CanFrame CanBusBackend::MBRtoTWAI(const MbrCanMessage& msg){
+    CanFrame twai_translated{};
+    twai_translated.identifier = msg.Id;
+    twai_translated.extd = msg.Extended;
+    twai_translated.data_length_code = msg.Length;
+    memcpy(twai_translated.data, msg.Data, msg.Length);
 
-    return translated;
+    return twai_translated;
 }
 
-MbrCanMessage CanBusBackend::DBCtoMBR(const CanFrame& frame){
-    MbrCanMessage translated;
-    //dbc cpp again
-
-    return translated;
+MbrCanMessage CanBusBackend::TWAItoMBR(const CanFrame& frame){
+    MbrCanMessage mbr_translated{};
+    mbr_translated.Id = frame.identifier;
+    mbr_translated.Extended = frame.extd;
+    mbr_translated.Length = frame.data_length_code;
+    memcpy(mbr_translated.Data, frame.data, frame.data_length_code);
+    return mbr_translated;
 }
 #elif defined (ARDUINO_ARCH_STM32)
 

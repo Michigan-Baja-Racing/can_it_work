@@ -1,4 +1,5 @@
 #include "board_backend.hpp"
+#include "canbus_backend.hpp"
 #include <Arduino.h>
 
 int64_t BoardBackend::m_LastSend    = 0;
@@ -11,7 +12,7 @@ void BoardBackend::Initialize() {
     m_Wifi.Start();
     CleanupClients();
     m_Sd.InitSD();
-    // canbus.Start(); I believe
+    m_Canbus.StartCAN();
 }
 
 // Runs the backend
@@ -23,6 +24,14 @@ void BoardBackend::Run() {
     }
 
     // collect data here, will be changed with canbus implementation
+    auto incoming = m_Canbus.ReceiveCAN();
+    if (incoming.has_value()){
+        m_IncomingFrame = incoming.value();
+        if (!ParseFrame(m_IncomingFrame)){
+            Serial.println("Frame Parse Failed");
+        }
+    }
+
     WheelRPM  = m_WheelRC.GetRPM(esp_timer_get_time(), digitalRead(32)) / 2;
     EngineRPM = m_EngineRC.GetRPM(esp_timer_get_time(), digitalRead(33));
 
@@ -35,6 +44,10 @@ void BoardBackend::Run() {
     }
 
     if (m_Wifi.NewCommand /*add for LoRa behavior*/) { ReceiveData(); }
+}
+
+bool BoardBackend::ParseFrame(MbrCanMessage& frame){
+    
 }
 
 uint64_t BoardBackend::GetRealTime() const {

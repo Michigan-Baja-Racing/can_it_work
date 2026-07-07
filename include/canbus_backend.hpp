@@ -28,18 +28,18 @@ public:
     bool StartCAN();
     bool SendCAN(const MbrCanMessage& msg);
     std::optional<MbrCanMessage> ReceiveCAN();
-    bool IsRunning() const { return m_Running; }
+    [[nodiscard]]bool IsRunning() const { return m_Running; }
 
 private:
     bool m_Running = false;
     bool m_Operational = false;
 
     #if defined(ARDUINO_ARCH_ESP32)
-        CanFrame DBCtoCAN(const MbrCanMessage& msg);
-        MbrCanMessage DBCtoMBR(const CanFrame& frame);
+        CanFrame MBRtoTWAI(const MbrCanMessage& msg);
+        MbrCanMessage TWAItoMBR(const CanFrame& frame);
     #elif defined(ARDUINO_ARCH_STM32)
-        STM32_CAN_Frame DBCtoCAN(const MbrCanMessage& msg);
-        MbrCanMessage DBCtoMBR(const STM32_CAN_Frame& frame);
+        STM32_CAN_Frame MBRtoSTM(const MbrCanMessage& msg);
+        MbrCanMessage STMtoMBR(const STM32_CAN_Frame& frame);
     #endif
 };
 
