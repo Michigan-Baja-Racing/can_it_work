@@ -15,31 +15,31 @@
 #endif
 
 // Struct to keep CAN messages unified across platforms
-struct MbrCanMessage {
-    uint32_t Id;
-    bool Extended;
-    uint8_t Length;
-    uint8_t Data[8];
+struct mbr_can_message {
+    uint32_t id;
+    bool extended;
+    uint8_t length;
+    uint8_t data[8];
 };
 
 // canbus_backend.hpp
-class CanBusBackend {
+class can_bus_backend {
 public:
-    bool StartCAN();
-    bool SendCAN(const MbrCanMessage& msg);
-    std::optional<MbrCanMessage> ReceiveCAN();
-    bool IsRunning() const { return m_Running; }
+    bool start_can();
+    bool send_can(const mbr_can_message& msg);
+    [[nodiscard]] std::optional<mbr_can_message> receive_can();
+    [[nodiscard]] bool is_running() const { return m_running_; }
 
 private:
-    bool m_Running = false;
-    bool m_Operational = false;
+    bool m_running_ = false;
+    bool m_operational_ = false;
 
     #if defined(ARDUINO_ARCH_ESP32)
-        CanFrame DBCtoCAN(const MbrCanMessage& msg);
-        MbrCanMessage DBCtoMBR(const CanFrame& frame);
+        CanFrame mbr_to_twai(const mbr_can_message& msg);
+        mbr_can_message twai_to_mbr(const CanFrame& frame);
     #elif defined(ARDUINO_ARCH_STM32)
-        STM32_CAN_Frame DBCtoCAN(const MbrCanMessage& msg);
-        MbrCanMessage DBCtoMBR(const STM32_CAN_Frame& frame);
+        STM32_CAN_Frame MBRtoSTM(const MbrCanMessage& msg);
+        MbrCanMessage STMtoMBR(const STM32_CAN_Frame& frame);
     #endif
 };
 

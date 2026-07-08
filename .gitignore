@@ -7,7 +7,6 @@ build*/
 .cache
 .cmake/
 
-.boardcode
 .theia
 .vscode
 .zed

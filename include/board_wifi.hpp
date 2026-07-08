@@ -6,23 +6,23 @@
 #include <WiFi.h>
 // #include <DNSServer.h>
 
-class BoardWifi {
+class board_wifi {
   public:
-    explicit BoardWifi(const char* ssid, const char* password);
-    ~BoardWifi() = default;
+    explicit board_wifi(const char* ssid, const char* password);
+    ~board_wifi() = default;
 
-    void          CleanupClients() { m_WebSock.cleanupClients(); }
-    void          Start();
-    void          SendData(const char* msg);
-    char          CommandValue[128]{""};
-    volatile bool NewCommand{false};
+    void          cleanup_clients() { m_web_sock_.cleanupClients(); }
+    void          start();
+    void          send_data(const char* msg);
+    char          command_value[128]{""};
+    volatile bool new_command{false};
 
   private:
-    const char* m_SSID;
-    const char* m_Password;
+    const char* m_ssid_;
+    const char* m_password_;
 
-    AsyncWebServer m_AsyncServer;
-    AsyncWebSocket m_WebSock;
+    AsyncWebServer m_async_server_;
+    AsyncWebSocket m_web_sock_;
 };
 
 
