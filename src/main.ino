@@ -8,13 +8,13 @@
 
 static const char*  ssid     = "esp32Wifi";
 static const char*  password = "MBRdatacollect";
-static BoardBackend backend{ssid, password};
+static board_backend backend{ssid, password};
 
 void setup() {
     Serial.begin(115200);
     pinMode(32, INPUT_PULLDOWN);
     pinMode(33, INPUT_PULLDOWN);
-    backend.Initialize();
+    backend.initialize();
 }
 
-void loop() { backend.Run(); }
+void loop() { backend.run(); }

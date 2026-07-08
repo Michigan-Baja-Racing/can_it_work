@@ -32,8 +32,30 @@ NS_ :
     SG_MUL_VAL_
 
 BS_: 
-BU_: Dual_RPM Front_Shocks Rear_Shocks 
-BO_ 0 RPM_STATUS: 8 Dual_RPM
+BU_: ESP32_Collector Dual_RPM Front_Shocks Rear_Shocks 
+BO_ 256 RPM_DATA: 8 Dual_RPM
+   SG_ EngineRPM : 0|16@1+ (0.1,0) [0|5000] "" ESP32_Collector
+   SG_ WheelRPM : 16|16@1+ (0.1,0) [0|5000] "" ESP32_Collector
+
+BO_ 512 F_SHOCK_DATA: 8 Front_Shocks
+   SG_ FR_Shock : 0|16@1+ (0.01,0) [0|50] "" ESP32_Collector
+   SG_ FL_Shock : 16|16@1+ (0.01,0) [0|50] "" ESP32_Collector
+
+BO_ 513 R_SHOCK_DATA: 8 Rear_Shocks
+   SG_ RL_Shock : 0|16@1+ (0.01,0) [0|50] "" ESP32_Collector
+   SG_ RR_Shock : 16|16@1+ (0.01,0) [0|50] "" ESP32_Collector
+
+BO_ 1 BUS_HALT_ALL: 1 ESP32_Collector
+   SG_ BUS_HALT_ALL : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 2 BUS_START_ALL: 1 ESP32_Collector
+   SG_ BUS_START_ALL : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 3 BUS_START_RPM: 1 ESP32_Collector
+   SG_ BUS_START_RPM : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 4 BUS_START_SHOCK: 1 ESP32_Collector
+   SG_ BUS_START_SHOCK : 0|8@1+ (1,0) [0|255] "" Vector__XXX
 
 BA_DEF_ BO_ "GenMsgBackgroundColor" STRING ;
 BA_DEF_ BO_ "GenMsgForegroundColor" STRING ;
@@ -43,15 +65,28 @@ BA_DEF_ BO_ "matchingcriteria" INT 0 0;
 BA_DEF_ BO_ "filterlabeling" INT 0 0;
 BA_DEF_ BO_ "matchingcriteria" INT 0 0;
 BA_DEF_ BO_ "filterlabeling" INT 0 0;
+BA_DEF_ BO_ "matchingcriteria" INT 0 0;
+BA_DEF_ BO_ "filterlabeling" INT 0 0;
+BA_DEF_ BO_ "matchingcriteria" INT 0 0;
+BA_DEF_ BO_ "filterlabeling" INT 0 0;
+BA_DEF_ BO_ "matchingcriteria" INT 0 0;
+BA_DEF_ BO_ "filterlabeling" INT 0 0;
+BA_ "GenMsgForegroundColor" BO_ 256 "#000000";
+BA_ "GenMsgForegroundColor" BO_ 512 "#000000";
+BA_ "GenMsgForegroundColor" BO_ 513 "#000000";
+BA_ "GenMsgForegroundColor" BO_ 1 "#000000";
+BA_ "GenMsgForegroundColor" BO_ 3 "#000000";
+BA_ "GenMsgForegroundColor" BO_ 4 "#000000";
 BA_DEF_DEF_ "GenMsgBackgroundColor" "#ffffff";
 BA_DEF_DEF_ "GenMsgForegroundColor" "#000000";
-BA_DEF_DEF_ "matchingcriteria" 1;
-BA_DEF_DEF_ "filterlabeling" 1;
-BA_DEF_DEF_ "matchingcriteria" 1;
-BA_DEF_DEF_ "filterlabeling" true;
 BA_DEF_DEF_ "matchingcriteria" 0;
-BA_DEF_DEF_ "filterlabeling" true;
+BA_DEF_DEF_ "filterlabeling" 0;
+CM_ BU_ ESP32_Collector "Main communication and collection node";
 CM_ BU_ Dual_RPM "Handles both wheel and Engine RPM";
 CM_ BU_ Front_Shocks "FR and FL Shocks";
 CM_ BU_ Rear_Shocks "RR and RL Shocks";
-CM_ BO_ 0 "Sends RPM status";
+CM_ BO_ 256 "Sends both wheel and engine RPM";
+VAL_ 1 BUS_HALT_ALL 255 "HALT_CONFIRMED";
+VAL_ 2 BUS_START_ALL 255 "START_ALL_CONFIRMED";
+VAL_ 3 BUS_START_RPM 255 "RPM_START_CONFIRMED";
+VAL_ 4 BUS_START_SHOCK 255 "SHOCK_START_CONFIRMED";

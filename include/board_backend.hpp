@@ -2,6 +2,7 @@
 #include "sd.hpp"
 #include "rpm.hpp"
 #include "canbus_backend.hpp"
+#include "mbr_dbc.h"
 
 static constexpr int MAX_FILES    = 16;
 static constexpr int MAX_NAME_LEN = 32;
