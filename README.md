@@ -5,5 +5,7 @@
 </p>
 
 <p align="center">
-MBR CANBUS Backend Software and DBC parser. This library handles the background decoding engine, loading network definitions, and converting raw CAN frames into clean engineering-unit signals for the MBR-DAQ-App ecosystem.
+MBR CANBUS Backend Software for the main collection node and DBC parser. This library handles the background decoding engine, loading network definitions, and converting raw CAN frames into clean engineering-unit signals for the MBR-DAQ-App ecosystem.
+
+This repository is primarly focused on the main data collection board on our CANBUS network, but our backend software is usable for any ESP or STM platform to connect to our network.
 </p>
