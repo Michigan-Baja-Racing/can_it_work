@@ -1,28 +1,28 @@
 #include "rpm.hpp"
 #include <cstdint>
 
-RPMCollector::RPMCollector() = default;
+rpm_collector::rpm_collector() = default;
 
-auto RPMCollector::GetRPM(int64_t timestamp, uint8_t pin_value) -> double {
+auto rpm_collector::get_rpm(int64_t timestamp, uint8_t pin_value) -> double {
     if (timestamp == 0) { return 0.0; }
 
-    if (m_LastTime != 0 && (timestamp - m_LastTime) > 2000000LL) {
-        m_RPM      = 0.0;
-        m_WasRPM   = false;
-        m_LastTime = 0;
-    } else if (pin_value == LO && !m_WasRPM) {
-        if (m_LastTime != 0) {
-            const auto elapsed_us = timestamp - m_LastTime;
+    if (m_last_time_ != 0 && (timestamp - m_last_time_) > 2000000LL) {
+        m_rpm_      = 0.0;
+        m_was_rpm_   = false;
+        m_last_time_ = 0;
+    } else if (pin_value == LO && !m_was_rpm_) {
+        if (m_last_time_ != 0) {
+            const auto elapsed_us = timestamp - m_last_time_;
             if (elapsed_us > 1) {
-                m_RPM    = 60000000.0 / static_cast<double>(elapsed_us);
-                m_WasRPM = true;
+                m_rpm_    = 60000000.0 / static_cast<double>(elapsed_us);
+                m_was_rpm_ = true;
             }
         }
-        m_LastTime = timestamp;
-        m_WasRPM   = true; // suppress second LO until a HI resets it
+        m_last_time_ = timestamp;
+        m_was_rpm_   = true; // suppress second LO until a HI resets it
     } else if (pin_value == HI) {
-        m_WasRPM = false;
+        m_was_rpm_ = false;
     }
 
-    return m_RPM;
+    return m_rpm_;
 }

@@ -1,10 +1,10 @@
 #include "board_wifi.hpp"
 #include "WiFi.h"
 
-BoardWifi::BoardWifi(const char* ssid, const char* password)
-    : m_SSID(ssid), m_Password(password), m_AsyncServer(80), m_WebSock("/ws") {}
+board_wifi::board_wifi(const char* ssid, const char* password)
+    : m_ssid_(ssid), m_password_(password), m_async_server_(80), m_web_sock_("/ws") {}
 
-void BoardWifi::Start() {
+void board_wifi::start() {
     WiFi.softAPdisconnect(true);
     WiFiClass::mode(WIFI_AP);
     delay(100);
@@ -14,7 +14,7 @@ void BoardWifi::Start() {
     IPAddress subnet(255, 255, 255, 0);
     WiFi.softAPConfig(local_ip, gateway, subnet);
 
-    if (WiFi.softAP(m_SSID, m_Password, 1, 0, 4)) {
+    if (WiFi.softAP(m_ssid_, m_password_, 1, 0, 4)) {
         Serial.println("SoftAP Started Successfully");
     } else {
         Serial.println("SoftAP Failed to Start");
@@ -24,20 +24,20 @@ void BoardWifi::Start() {
 
     if (MDNS.begin("telemetry")) { Serial.println("mDNS responder started"); }
 
-    m_WebSock.onEvent([this](AsyncWebSocket*       server,
+    m_web_sock_.onEvent([this](AsyncWebSocket*       server,
                              AsyncWebSocketClient* /*client*/,
                              AwsEventType          type,
                              void*                 /*arg*/,
                              uint8_t*              data,
                              size_t                len) {
         if (type == WS_EVT_DATA) {
-            size_t copy_len = min(len, sizeof(CommandValue) - 1);
-            memcpy(CommandValue, data, copy_len);
-            CommandValue[copy_len] = '\0';
-            NewCommand            = true;
+            size_t copy_len = min(len, sizeof(command_value) - 1);
+            memcpy(command_value, data, copy_len);
+            command_value[copy_len] = '\0';
+            new_command            = true;
 
             Serial.print("Received Command: ");
-            Serial.println(CommandValue);
+            Serial.println(command_value);
         } else if (type == WS_EVT_CONNECT) {
             server->cleanupClients();
             Serial.println("Client connected");
@@ -46,17 +46,17 @@ void BoardWifi::Start() {
         }
     });
 
-    m_AsyncServer.addHandler(&m_WebSock);
+    m_async_server_.addHandler(&m_web_sock_);
 
-    m_AsyncServer.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
+    m_async_server_.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
         request->send(200, "text/plain", "Microsoft NCSI");
     });
 
-    m_AsyncServer.on("/generate_204", [](AsyncWebServerRequest* request) { request->send(204); });
-    m_AsyncServer.begin();
+    m_async_server_.on("/generate_204", [](AsyncWebServerRequest* request) { request->send(204); });
+    m_async_server_.begin();
     Serial.println("HTTP Server started");
 }
 
-void BoardWifi::SendData(const char* msg) {
-    if (m_WebSock.count() > 0) { m_WebSock.textAll(msg); }
+void board_wifi::send_data(const char* msg) {
+    if (m_web_sock_.count() > 0) { m_web_sock_.textAll(msg); }
 }

@@ -1,18 +1,18 @@
 #include "FS.h"
 
-class SDCard {
+class sd_card {
   public:
-    explicit SDCard();
-    bool        OpenSD(const char* name);
-    void        WriteSD(const char* msg);
-    bool        CloseSD();
-    bool        InitSD() const;
-    bool        IsOpen  = false;
-    bool        IsWrite = false;
-    const char* Name;
+    explicit sd_card();
+    bool        open_sd(const char* name);
+    void        write_sd(const char* msg);
+    bool        close_sd();
+    [[nodiscard]] bool        init_sd() const;
+    bool        is_open  = false;
+    bool        is_write = false;
+    const char* name;
 
   private:
-    File      m_LogFile;
-    const int m_Chipselect = 5;
-    int64_t      m_LastFlush  = 0;
+    File      m_log_file_;
+    const int m_chip_select_ = 5;
+    int64_t      m_last_flush_  = 0;
 };

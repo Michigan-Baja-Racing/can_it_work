@@ -1,18 +1,18 @@
 #include <cstdint>
 
-class RPMCollector {
+class rpm_collector {
   public:
-    explicit RPMCollector();
+    explicit rpm_collector();
 
-    auto               GetRPM(int64_t timestamp, uint8_t pin_value) -> double; // in the cpp
-    [[nodiscard]] auto Thresh() const -> int64_t {
-        return m_LastTime + 2000000LL /* Needs to be converted to us */;
+    auto               get_rpm(int64_t timestamp, uint8_t pin_value) -> double; // in the cpp
+    [[nodiscard]] auto thresh() const -> int64_t {
+        return m_last_time_ + 2000000LL /* Needs to be converted to us */;
     }
 
   private:
-    int64_t m_LastTime = 0; // This is in microseconds
-    double  m_RPM      = 0;
-    bool    m_WasRPM   = false;
+    int64_t m_last_time_ = 0; // This is in microseconds
+    double  m_rpm_      = 0;
+    bool    m_was_rpm_   = false;
 };
 
 #define LO 0

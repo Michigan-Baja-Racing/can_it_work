@@ -1,22 +1,22 @@
 #include "sd.hpp"
 #include "SD.h"
 
-SDCard::SDCard() = default;
+sd_card::sd_card() = default;
 
-bool SDCard::OpenSD(const char* name) {
+bool sd_card::open_sd(const char* name) {
 
     File check  = SD.open(name, FILE_READ);
     bool exists = static_cast<bool>(check);
     if (check) { check.close(); }
 
     if (exists) {
-        m_LogFile = SD.open(name, FILE_APPEND);
+        m_log_file_ = SD.open(name, FILE_APPEND);
     } else {
-        m_LogFile = SD.open(name, FILE_WRITE);
+        m_log_file_ = SD.open(name, FILE_WRITE);
     }
 
-    if (m_LogFile) {
-        IsOpen = true;
+    if (m_log_file_) {
+        is_open = true;
         if (exists) {
             Serial.println("SD File re-opened successfully. Streaming active.");
         } else {
@@ -28,30 +28,30 @@ bool SDCard::OpenSD(const char* name) {
     return false;
 }
 
-void SDCard::WriteSD(const char* msg) {
-    if (!IsOpen || !m_LogFile) { return; }
+void sd_card::write_sd(const char* msg) {
+    if (!is_open || !m_log_file_) { return; }
 
-    m_LogFile.print(msg);
+    m_log_file_.print(msg);
 
-    if (millis() - m_LastFlush > 5000) {
-        m_LogFile.flush();
-        m_LastFlush = millis();
+    if (millis() - m_last_flush_ > 5000) {
+        m_log_file_.flush();
+        m_last_flush_ = millis();
     }
 }
 
-bool SDCard::CloseSD() {
-    if (IsOpen && m_LogFile) {
-        m_LogFile.close();
-        IsOpen  = false;
-        IsWrite = false;
+bool sd_card::close_sd() {
+    if (is_open && m_log_file_) {
+        m_log_file_.close();
+        is_open  = false;
+        is_write = false;
         Serial.println("SD File cleanly closed.");
         return true;
     }
     return false;
 }
 
-bool SDCard::InitSD() const {
-    if (!SD.begin(m_Chipselect)) {
+bool sd_card::init_sd() const {
+    if (!SD.begin(m_chip_select_)) {
         Serial.println("SD mount fail");
         return false;
     }

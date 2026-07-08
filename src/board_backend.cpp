@@ -2,133 +2,135 @@
 #include "canbus_backend.hpp"
 #include <Arduino.h>
 
-int64_t BoardBackend::m_LastSend    = 0;
-int64_t BoardBackend::m_LastCleanup = 0;
+int64_t board_backend::m_last_send    = 0;
+int64_t board_backend::m_last_cleanup = 0;
 
-BoardBackend::BoardBackend(const char* ssid, const char* password)
-    : m_SSID(ssid), m_Password(password), m_Wifi(ssid, password) {};
+board_backend::board_backend(const char* ssid, const char* password)
+    : m_ssid_(ssid), m_password_(password), m_wifi_(ssid, password) {};
 
-void BoardBackend::Initialize() {
-    m_Wifi.Start();
-    CleanupClients();
-    m_Sd.InitSD();
-    m_Canbus.StartCAN();
+void board_backend::initialize() {
+    m_wifi_.start();
+    cleanup_clients();
+    if (!m_sd_.init_sd()) {
+        Serial.println("SD init fail");
+        return;
+    }
+    m_canbus_.start_can();
 }
 
 // Runs the backend
-void BoardBackend::Run() {
+void board_backend::run() {
     int64_t now = esp_timer_get_time();
-    if (now - m_LastCleanup > 10000000LL) {
-        CleanupClients();
-        m_LastCleanup = now;
+    if (now - m_last_cleanup > 10000000LL) {
+        cleanup_clients();
+        m_last_cleanup = now;
     }
 
     // collect data here, will be changed with canbus implementation
-    auto incoming = m_Canbus.ReceiveCAN();
-    if (incoming.has_value()){
-        m_IncomingFrame = incoming.value();
-        if (!ParseFrame(m_IncomingFrame)){
+    if (auto incoming = m_canbus_.receive_can()){
+        m_incoming_frame_ = incoming.value();
+        if (!parse_frame(m_incoming_frame_)){
             Serial.println("Frame Parse Failed");
         }
     }
 
-    WheelRPM  = m_WheelRC.GetRPM(esp_timer_get_time(), digitalRead(32)) / 2;
-    EngineRPM = m_EngineRC.GetRPM(esp_timer_get_time(), digitalRead(33));
+    wheel_rpm  = m_wheel_rc_.get_rpm(esp_timer_get_time(), digitalRead(32)) / 2;
+    engine_rpm = m_engine_rc_.get_rpm(esp_timer_get_time(), digitalRead(33));
 
-    snprintf(m_Msg, sizeof(m_Msg), "T %llu W %f E %f\n", GetRealTime(), WheelRPM, EngineRPM);
+    snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f\n", get_real_time(), wheel_rpm, engine_rpm);
 
-    if ((now - m_LastSend > 50000LL) && m_IsTimeSynced) {
-        SendData(m_Msg);
-        if (m_Sd.IsOpen && m_Sd.IsWrite) { m_Sd.WriteSD(m_Msg); }
-        m_LastSend = now;
+    if ((now - m_last_send > 50000LL) && m_is_time_synced_) {
+        send_data(m_msg_);
+        if (m_sd_.is_open && m_sd_.is_write) { m_sd_.write_sd(m_msg_); }
+        m_last_send = now;
     }
 
-    if (m_Wifi.NewCommand /*add for LoRa behavior*/) { ReceiveData(); }
+    if (m_wifi_.new_command /*add for LoRa behavior*/) { receive_data(); }
 }
 
-bool BoardBackend::ParseFrame(MbrCanMessage& frame){
-    
+bool board_backend::parse_frame(mbr_can_message& frame){
+    return true;
 }
 
-uint64_t BoardBackend::GetRealTime() const {
-    if (!m_IsTimeSynced) {
+uint64_t board_backend::get_real_time() const {
+    if (!m_is_time_synced_) {
         return 0;
     }
 
     int64_t current_time = esp_timer_get_time();
-    auto elapsed_micros = static_cast<uint64_t>(current_time - m_LocalSyncMicros);
-    return static_cast<uint64_t>(m_BaseTimeMicros) + elapsed_micros;
+    auto elapsed_micros = static_cast<uint64_t>(current_time - m_local_sync_micros_);
+    return static_cast<uint64_t>(m_base_time_micros_) + elapsed_micros;
 }
 
-void BoardBackend::SendData(const char* msg) { m_Wifi.SendData(msg); }
+void board_backend::send_data(const char* msg) { m_wifi_.send_data(msg); }
 
-void BoardBackend::ReceiveData() {
-    m_Wifi.NewCommand = false;
+void board_backend::receive_data() {
+    m_wifi_.new_command = false;
     char res[64];
-    if (m_WifiOn) {
-        if (strncmp(m_Wifi.CommandValue, "SYNC", 4) == 0) {
-            const char* time_str = m_Wifi.CommandValue + 4;
-            m_LocalSyncMicros   = esp_timer_get_time();
-            m_BaseTimeMicros    = static_cast<int64_t>(strtoull(time_str, nullptr, 10));
-            m_IsTimeSynced      = true;
-            if (m_BaseTimeMicros != 0) {
-                snprintf(res, sizeof(res), "RES 0 SYNC %lld\n", m_BaseTimeMicros);
+    if (m_wifi_on_) {
+        if (strncmp(m_wifi_.command_value, "SYNC", 4) == 0) {
+            const char* time_str = m_wifi_.command_value + 4;
+            m_local_sync_micros_   = esp_timer_get_time();
+            m_base_time_micros_    = static_cast<int64_t>(strtoull(time_str, nullptr, 10));
+            m_is_time_synced_      = true;
+            if (m_base_time_micros_ != 0) {
+                snprintf(res, sizeof(res), "RES 0 SYNC %lld\n", m_base_time_micros_);
                 Serial.println(res);
-                SendData(res);
+                send_data(res);
             }
-        } else if (strncmp(m_Wifi.CommandValue, "SD_START", 8) == 0) {
-            const char* name_str = m_Wifi.CommandValue + 9;
+        } else if (strncmp(m_wifi_.command_value, "SD_START", 8) == 0) {
+            const char* name_str = m_wifi_.command_value + 9;
             if (*name_str == '\0') { name_str = "/data.txt"; }
-            if (m_FileCount < MAX_FILES) {
+            if (m_file_count_ < MAX_FILES) {
                 bool exists = false;
-                for (int i = 0; i < m_FileCount; i++) {
-                    if (strncmp(m_FileIndex[i], name_str, MAX_NAME_LEN) == 0) {
+                for (int i = 0; i < m_file_count_; i++) {
+                    if (strncmp(m_file_index_[i], name_str, MAX_NAME_LEN) == 0) {
                         exists = true;
                         break;
                     }
                 }
-                if (!exists) { strncpy(m_FileIndex[m_FileCount++], name_str, MAX_NAME_LEN - 1); }
+                if (!exists) { strncpy(m_file_index_[m_file_count_++], name_str, MAX_NAME_LEN - 1); }
             } else {
-                SendData("RES 0 SD_START deadbeef\n");
+                send_data("RES 0 SD_START deadbeef\n");
                 return;
             }
-            if (m_Sd.IsOpen) {
-                if (m_Sd.CloseSD()) {
-                    SendData("RES 0 SD_WRITE 0\n");
-                    SendData("RES 0 SD_CLOSE 1\n");
+            if (m_sd_.is_open) {
+                if (m_sd_.close_sd()) {
+                    send_data("RES 0 SD_WRITE 0\n");
+                    send_data("RES 0 SD_CLOSE 1\n");
                 } else {
-                    SendData("RES 0 SD_CLOSE 0\n");
+                    send_data("RES 0 SD_CLOSE 0\n");
                 }
             }
-            if (!m_Sd.OpenSD(name_str)) {
-                SendData("RES 0 SD_START deadbeef\n");
+            if (!m_sd_.open_sd(name_str)) {
+                send_data("RES 0 SD_START deadbeef\n");
                 return;
             }
-            m_Sd.Name = name_str;
+            m_sd_.name = name_str;
             snprintf(res, sizeof(res), "RES 0 SD_START %s\n", name_str);
-            SendData(res);
-        } else if (strncmp(m_Wifi.CommandValue, "SD_WRITE", 8) == 0) {
-            const char* value_str = m_Wifi.CommandValue + 9;
-            m_Sd.IsWrite         = (*value_str == '1');
-            snprintf(res, sizeof(res), "RES 0 SD_WRITE %d\n", m_Sd.IsWrite);
-            SendData(res);
-        } else if (strncmp(m_Wifi.CommandValue, "SD_CLOSE", 8) == 0) {
-            if (m_Sd.CloseSD()) {
-                SendData("RES 0 SD_WRITE 0\n");
-                SendData("RES 0 SD_CLOSE 1\n");
+            send_data(res);
+        } else if (strncmp(m_wifi_.command_value, "SD_WRITE", 8) == 0) {
+            const char* value_str = m_wifi_.command_value + 9;
+            m_sd_.is_write         = (*value_str == '1');
+            snprintf(res, sizeof(res), "RES 0 SD_WRITE %d\n", m_sd_.is_write);
+            send_data(res);
+        } else if (strncmp(m_wifi_.command_value, "SD_CLOSE", 8) == 0) {
+            if (m_sd_.close_sd()) {
+                send_data("RES 0 SD_WRITE 0\n");
+                send_data("RES 0 SD_CLOSE 1\n");
             } else {
-                SendData("RES 0 SD_CLOSE 0\n");
+                send_data("RES 0 SD_CLOSE 0\n");
             }
-        } else if (strncmp(m_Wifi.CommandValue, "STATUS", 6) == 0) {
+        } else if (strncmp(m_wifi_.command_value, "STATUS", 6) == 0) {
             for (size_t i = 0; i < MAX_FILES; i++) {
                 // snprintf(res, sizeof(res), "RES 0 SD_OPEN %d\n", m_FileNames[i]);
                 // SendData(res);
             }
         } else {
             /*currently does nothing, need to work on other command implementation*/
-            SendData("RES 1\n");
+            send_data("RES 1\n");
         }
     }
 
-    if (m_LoRaOn /*currently its never on */) {}
+    if (m_lora_on_ /*currently its never on */) {}
 }
