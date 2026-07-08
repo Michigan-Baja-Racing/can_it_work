@@ -49,7 +49,31 @@ void board_backend::run() {
 }
 
 bool board_backend::parse_frame(mbr_can_message& frame){
-    return true;
+    switch (frame.id) {
+            case 0x100: {
+                mbr_dbc_rpm_data_t rpm{};
+                if (mbr_dbc_rpm_data_unpack(&rpm, frame.data, frame.length) != 0){ return false; }
+                engine_rpm = mbr_dbc_rpm_data_engine_rpm_decode(rpm.engine_rpm);
+                wheel_rpm  = mbr_dbc_rpm_data_wheel_rpm_decode(rpm.wheel_rpm);
+                return true;
+            }
+            case 0x200: {
+                mbr_dbc_f_shock_data_t front{};
+                if (mbr_dbc_f_shock_data_unpack(&front, frame.data, frame.length) != 0){ return false; }
+                fr_shock = mbr_dbc_f_shock_data_fr_shock_decode(front.fr_shock);
+                fl_shock = mbr_dbc_f_shock_data_fl_shock_decode(front.fl_shock);
+                return true;
+            }
+            case 0x201: {
+                mbr_dbc_r_shock_data_t rear{};
+                if (mbr_dbc_r_shock_data_unpack(&rear, frame.data, frame.length) != 0){ return false; }
+                rr_shock = mbr_dbc_r_shock_data_rr_shock_decode(rear.rr_shock);
+                rl_shock = mbr_dbc_r_shock_data_rl_shock_decode(rear.rl_shock);
+                return true;
+            }
+            default:
+                return false;
+        }
 }
 
 uint64_t board_backend::get_real_time() const {

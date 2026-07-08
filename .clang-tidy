@@ -26,6 +26,7 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -bugprone-unchecked-optional-access,
   -bugprone-exception-escape,
+  -readability-uppercase-literal-suffix,
 
 WarningsAsErrors: "*"
 
