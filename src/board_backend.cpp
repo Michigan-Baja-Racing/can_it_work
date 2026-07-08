@@ -37,7 +37,7 @@ void board_backend::run() {
     wheel_rpm  = m_wheel_rc_.get_rpm(esp_timer_get_time(), digitalRead(32)) / 2;
     engine_rpm = m_engine_rc_.get_rpm(esp_timer_get_time(), digitalRead(33));
 
-    snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f\n", get_real_time(), wheel_rpm, engine_rpm);
+    snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f FL %f FR %f RL %f RR %f\n", get_real_time(), wheel_rpm, engine_rpm, fl_shock, fr_shock, rl_shock, rr_shock);
 
     if ((now - m_last_send > 50000LL) && m_is_time_synced_) {
         send_data(m_msg_);
