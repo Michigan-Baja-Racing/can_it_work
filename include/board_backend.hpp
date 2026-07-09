@@ -3,6 +3,8 @@
 #include "rpm.hpp"
 #include "canbus_backend.hpp"
 #include "mbr_dbc.h"
+#include <array>
+#include <string_view>
 
 static constexpr int MAX_FILES    = 16;
 static constexpr int MAX_NAME_LEN = 32;
@@ -27,7 +29,27 @@ class board_backend {
     volatile double rl_shock = 0;
 
   private:
+    // This is where all command behavior belongs, always add your command function declarations here
+    using command_handler = void (board_backend::*)(std::string_view payload);
+
+    struct command_mapping {
+        std::string_view command_name;
+        command_handler   handler;
+    };
+
+    void handle_sync_cmd(std::string_view payload);
+    void handle_sd_start_cmd(std::string_view payload);
+    void handle_sd_write_cmd(std::string_view payload);
+    void handle_sd_close_cmd(std::string_view payload);
+    void handle_status_cmd(std::string_view payload);
+
+    static const std::array<command_mapping, 5> m_command_table;
+
+    void handle_command(std::string_view incoming);
+
+  private:
     void                     send_data(const char* msg);
+    void                     send_data(std::string_view);
     void                     receive_data();
     bool                     parse_frame(mbr_can_message& frame);
     const char*              m_ssid_;
@@ -46,7 +68,7 @@ class board_backend {
     rpm_collector             m_engine_rc_;
     can_bus_backend            m_canbus_;
     mbr_can_message            m_incoming_frame_;
-    char                     m_file_index_[MAX_FILES][MAX_NAME_LEN]{};
+    std::array<std::array<char, MAX_NAME_LEN>, MAX_FILES> m_file_index_{};
     int                      m_file_count_ = 0;
     std::vector<std::string> m_file_names_;
 };

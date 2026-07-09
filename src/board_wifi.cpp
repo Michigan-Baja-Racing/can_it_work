@@ -60,3 +60,7 @@ void board_wifi::start() {
 void board_wifi::send_data(const char* msg) {
     if (m_web_sock_.count() > 0) { m_web_sock_.textAll(msg); }
 }
+
+void board_wifi::send_data(std::string_view msg) {
+    if (m_web_sock_.count() > 0) { m_web_sock_.textAll(msg.data(), msg.size()); }
+}
