@@ -14,6 +14,7 @@ class board_wifi {
     void          cleanup_clients() { m_web_sock_.cleanupClients(); }
     void          start();
     void          send_data(const char* msg);
+    void          send_data(std::string_view msg);
     char          command_value[128]{""};
     volatile bool new_command{false};
 
@@ -24,5 +25,3 @@ class board_wifi {
     AsyncWebServer m_async_server_;
     AsyncWebSocket m_web_sock_;
 };
-
-
