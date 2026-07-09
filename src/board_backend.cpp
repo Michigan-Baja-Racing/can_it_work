@@ -7,9 +7,13 @@
 int64_t board_backend::m_last_send    = 0;
 int64_t board_backend::m_last_cleanup = 0;
 
+
+// Main constructor, don't change this unless you need to
 board_backend::board_backend(const char* ssid, const char* password)
     : m_ssid_(ssid), m_password_(password), m_wifi_(ssid, password) {};
 
+// This is the command array that handles the incoming commands and its function pair
+// When implementing new commands add to this first
 const std::array<board_backend::command_mapping, 5> board_backend::m_command_table{{
     {"SYNC",     &board_backend::handle_sync_cmd},
     {"SD_START", &board_backend::handle_sd_start_cmd},
@@ -18,6 +22,8 @@ const std::array<board_backend::command_mapping, 5> board_backend::m_command_tab
     {"STATUS",   &board_backend::handle_status_cmd}
 }};
 
+// Initializes the backend and whatever dependent
+// class functions needed
 void board_backend::initialize() {
     m_wifi_.start();
     cleanup_clients();
@@ -36,7 +42,9 @@ void board_backend::run() {
         m_last_cleanup = now;
     }
 
-    // collect data here, will be changed with canbus implementation
+    // This is the main canbus data collection function
+    // The actual logic however is in parse_frame
+    // This shouldn't need to be changed
     if (auto incoming = m_canbus_.receive_can()){
         m_incoming_frame_ = incoming.value();
         if (!parse_frame(m_incoming_frame_)){
@@ -47,43 +55,23 @@ void board_backend::run() {
     wheel_rpm  = m_wheel_rc_.get_rpm(esp_timer_get_time(), digitalRead(32)) / 2;
     engine_rpm = m_engine_rc_.get_rpm(esp_timer_get_time(), digitalRead(33));
 
-    snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f FL %f FR %f RL %f RR %f\n", get_real_time(), wheel_rpm, engine_rpm, fl_shock, fr_shock, rl_shock, rr_shock);
-
+    // This if statement is the bundling and sending of the data
+    // This shouldn't change unless we add a new method of sending data
+    // The only thing that would need to be changed is the 50000LL
+    // That number is the rate at which we send data
+    // Currently sending once every 50,000 microseconds, or 50 ms
     if ((now - m_last_send > 50000LL) && m_is_time_synced_) {
+        snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f FL %f FR %f RL %f RR %f\n", get_real_time(), wheel_rpm, engine_rpm, fl_shock, fr_shock, rl_shock, rr_shock);
         send_data(m_msg_);
         if (m_sd_.is_open && m_sd_.is_write) { m_sd_.write_sd(m_msg_); }
         m_last_send = now;
     }
 
+    // This checks if we have received an incoming message and
+    // calls the corresponding function
+    // This also doesn't need to change unless we add other
+    // data receving behavior that requires a different function
     if (m_wifi_.new_command /*add for LoRa behavior*/) { receive_data(); }
-}
-
-bool board_backend::parse_frame(mbr_can_message& frame){
-    switch (frame.id) {
-            case 0x100: {
-                mbr_dbc_rpm_data_t rpm{};
-                if (mbr_dbc_rpm_data_unpack(&rpm, frame.data, frame.length) != 0){ return false; }
-                engine_rpm = mbr_dbc_rpm_data_engine_rpm_decode(rpm.engine_rpm);
-                wheel_rpm  = mbr_dbc_rpm_data_wheel_rpm_decode(rpm.wheel_rpm);
-                return true;
-            }
-            case 0x200: {
-                mbr_dbc_f_shock_data_t front{};
-                if (mbr_dbc_f_shock_data_unpack(&front, frame.data, frame.length) != 0){ return false; }
-                fr_shock = mbr_dbc_f_shock_data_fr_shock_decode(front.fr_shock);
-                fl_shock = mbr_dbc_f_shock_data_fl_shock_decode(front.fl_shock);
-                return true;
-            }
-            case 0x201: {
-                mbr_dbc_r_shock_data_t rear{};
-                if (mbr_dbc_r_shock_data_unpack(&rear, frame.data, frame.length) != 0){ return false; }
-                rr_shock = mbr_dbc_r_shock_data_rr_shock_decode(rear.rr_shock);
-                rl_shock = mbr_dbc_r_shock_data_rl_shock_decode(rear.rl_shock);
-                return true;
-            }
-            default:
-                return false;
-        }
 }
 
 uint64_t board_backend::get_real_time() const {
@@ -96,10 +84,16 @@ uint64_t board_backend::get_real_time() const {
     return static_cast<uint64_t>(m_base_time_micros_) + elapsed_micros;
 }
 
+// This handles sending data when you are using a const char*
 void board_backend::send_data(const char* msg) { m_wifi_.send_data(msg); }
 
+// This handles sending data when you are using a string_view
 void board_backend::send_data(std::string_view msg) { m_wifi_.send_data(msg); }
 
+// This function is where incoming messages are parsed and decided
+// on what type of message they are
+// Currently we only have CMD type messages, but this will likely
+// change with a more robust system
 void board_backend::receive_data() {
     m_wifi_.new_command = false;
     if (!m_wifi_on_) { return ;}
@@ -111,6 +105,12 @@ void board_backend::receive_data() {
         }
 }
 
+
+// This is where CMD type messages are handled
+// This finds out what command is sent and calls its respective function
+// This shouldn't need to change as the command functions themselves
+// actually change states, this is simply the layer that chooses
+// what command function to run
 void board_backend::handle_command(std::string_view incoming) {
     incoming.remove_prefix(4);
 
@@ -133,10 +133,18 @@ void board_backend::handle_command(std::string_view incoming) {
 }
 
 // This is the collection of every current Wifi command and its implementation.
+// When making new commands, its important that you stick to cpp standards
+// currently the ESP32 software doesn't have access to a stable build
+// of C++20, therefore we still use snprintf
 // To add more, simply add the command function def in the .hpp
 // then increase the size of the command table and finally
 // write the implementation of the command
 
+// Handles the SYNC command
+// It checks if the time has been synced and syncs it to the
+// local time of your computer in microseconds
+// Microseconds isn't required but some helper functions like rpm
+// must run in microseconds
 void board_backend::handle_sync_cmd(std::string_view payload) {
     std::array<char, 64> res;
     m_local_sync_micros_   = esp_timer_get_time();
@@ -150,6 +158,8 @@ void board_backend::handle_sync_cmd(std::string_view payload) {
     }
 }
 
+// Handles the starting of an SD card and closes
+// any SD card that is currently open
 void board_backend::handle_sd_start_cmd(std::string_view payload) {
     std::array<char, 64> res;
     std::array<char, MAX_NAME_LEN> name_array;
@@ -192,6 +202,7 @@ void board_backend::handle_sd_start_cmd(std::string_view payload) {
     send_data(res_payload);
 }
 
+// Handles the enabling and disabling of the SD card writing functions
 void board_backend::handle_sd_write_cmd(std::string_view payload) {
     std::array<char, 64> res;
     std::string payload_str = std::string(payload);
@@ -202,6 +213,7 @@ void board_backend::handle_sd_write_cmd(std::string_view payload) {
     send_data(res_payload);
 }
 
+// Handles the closing of the currently open SD card
 void board_backend::handle_sd_close_cmd(std::string_view payload) {
     if (m_sd_.close_sd()) {
         send_data("RES SD_WRITE 0\n");
@@ -211,11 +223,46 @@ void board_backend::handle_sd_close_cmd(std::string_view payload) {
     }
 }
 
+// Currenly lacking implementation, the goal is to send the status of all currently
+// open/created SD cards on the ESP32. This would be used when you let the ESP32 run
+// and cycle the DAQ App
 void board_backend::handle_status_cmd(std::string_view payload){
     for (size_t i = 0; i < MAX_FILES; i++) {
         // snprintf(res, sizeof(res), "RES 0 SD_OPEN %d\n", m_FileNames[i]);
         // SendData(res);
     }
+}
+
+// Handles the parsing of incoming CAN frames
+// This function expects that the user is using the mbr_can_message frame wrapper
+// instead of the specific platform wrapper
+// This currently only has implementation for receiving data
+bool board_backend::parse_frame(mbr_can_message& frame){
+    switch (frame.id) {
+            case 0x100: {
+                mbr_dbc_rpm_data_t rpm{};
+                if (mbr_dbc_rpm_data_unpack(&rpm, frame.data, frame.length) != 0){ return false; }
+                engine_rpm = mbr_dbc_rpm_data_engine_rpm_decode(rpm.engine_rpm);
+                wheel_rpm  = mbr_dbc_rpm_data_wheel_rpm_decode(rpm.wheel_rpm);
+                return true;
+            }
+            case 0x200: {
+                mbr_dbc_f_shock_data_t front{};
+                if (mbr_dbc_f_shock_data_unpack(&front, frame.data, frame.length) != 0){ return false; }
+                fr_shock = mbr_dbc_f_shock_data_fr_shock_decode(front.fr_shock);
+                fl_shock = mbr_dbc_f_shock_data_fl_shock_decode(front.fl_shock);
+                return true;
+            }
+            case 0x201: {
+                mbr_dbc_r_shock_data_t rear{};
+                if (mbr_dbc_r_shock_data_unpack(&rear, frame.data, frame.length) != 0){ return false; }
+                rr_shock = mbr_dbc_r_shock_data_rr_shock_decode(rear.rr_shock);
+                rl_shock = mbr_dbc_r_shock_data_rl_shock_decode(rear.rl_shock);
+                return true;
+            }
+            default:
+                return false;
+        }
 }
 
 /*
