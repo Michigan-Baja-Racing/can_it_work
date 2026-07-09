@@ -1,6 +1,8 @@
 #include "canbus_backend.hpp"
 
-
+// This file serves as the translation layer between either the ESP32 or STM platform into
+// MBR's CAN struct
+// This is mostly just to allow for 1 file to manage both types of logic
 
 bool can_bus_backend::start_can() {
     #if defined(ARDUINO_ARCH_ESP32)
