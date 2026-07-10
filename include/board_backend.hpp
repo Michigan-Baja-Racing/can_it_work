@@ -42,8 +42,9 @@ class board_backend {
     void handle_sd_write_cmd(std::string_view payload);
     void handle_sd_close_cmd(std::string_view payload);
     void handle_status_cmd(std::string_view payload);
+    void handle_control_all_cmd(std::string_view payload);
 
-    static const std::array<command_mapping, 5> m_command_table;
+    static const std::array<command_mapping, 6> m_command_table;
 
     void handle_command(std::string_view incoming);
 

@@ -1,6 +1,8 @@
 #include "board_backend.hpp"
 #include "canbus_backend.hpp"
+#include "mbr_dbc.h"
 #include <Arduino.h>
+#include <cstdint>
 #include <string>
 #include <charconv>
 
@@ -14,12 +16,13 @@ board_backend::board_backend(const char* ssid, const char* password)
 
 // This is the command array that handles the incoming commands and its function pair
 // When implementing new commands add to this first
-const std::array<board_backend::command_mapping, 5> board_backend::m_command_table{{
+const std::array<board_backend::command_mapping, 6> board_backend::m_command_table{{
     {"SYNC",     &board_backend::handle_sync_cmd},
     {"SD_START", &board_backend::handle_sd_start_cmd},
     {"SD_WRITE", &board_backend::handle_sd_write_cmd},
     {"SD_CLOSE", &board_backend::handle_sd_close_cmd},
-    {"STATUS",   &board_backend::handle_status_cmd}
+    {"STATUS",   &board_backend::handle_status_cmd},
+    {"CONTROL_ALL", &board_backend::handle_control_all_cmd},
 }};
 
 // Initializes the backend and whatever dependent
@@ -233,27 +236,55 @@ void board_backend::handle_status_cmd(std::string_view payload){
     }
 }
 
+// Handles the stopping and starting of all nodes on the CAN line
+// Although the values are either 1 or 2, its necessary to always
+// push the payload_int through the encode stage as well as use the
+// funny ENUMS to ensure that if any dbc changes are made the code
+// won't completely blow up
+void board_backend::handle_control_all_cmd(std::string_view payload) {
+    mbr_dbc_bus_start_stop_t handle{};
+    uint8_t payload_int = 0;
+    uint8_t sending_payload = 0;
+    std::from_chars(payload.data(),  payload.data() + payload.size(), payload_int);
+    switch (payload_int) {
+        case MBR_DBC_BUS_START_STOP_BUS_HANDLE_START_ALL_CHOICE:
+        case MBR_DBC_BUS_START_STOP_BUS_HANDLE_STOP_ALL_CHOICE:
+        {
+            handle.bus_handle = mbr_dbc_bus_start_stop_bus_handle_encode(payload_int);
+            mbr_can_message msg{};
+            msg.id = MBR_DBC_BUS_START_STOP_FRAME_ID;
+            msg.extended = MBR_DBC_BUS_START_STOP_IS_EXTENDED;
+            msg.length = MBR_DBC_BUS_START_STOP_LENGTH;
+            mbr_dbc_bus_start_stop_pack(msg.data, &handle, MBR_DBC_BUS_START_STOP_LENGTH);
+            m_canbus_.send_can(msg);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 // Handles the parsing of incoming CAN frames
 // This function expects that the user is using the mbr_can_message frame wrapper
 // instead of the specific platform wrapper
 // This currently only has implementation for receiving data
 bool board_backend::parse_frame(mbr_can_message& frame){
     switch (frame.id) {
-            case 0x100: {
+            case MBR_DBC_RPM_DATA_FRAME_ID: {
                 mbr_dbc_rpm_data_t rpm{};
                 if (mbr_dbc_rpm_data_unpack(&rpm, frame.data, frame.length) != 0){ return false; }
                 engine_rpm = mbr_dbc_rpm_data_engine_rpm_decode(rpm.engine_rpm);
                 wheel_rpm  = mbr_dbc_rpm_data_wheel_rpm_decode(rpm.wheel_rpm);
                 return true;
             }
-            case 0x200: {
+            case MBR_DBC_F_SHOCK_DATA_FRAME_ID: {
                 mbr_dbc_f_shock_data_t front{};
                 if (mbr_dbc_f_shock_data_unpack(&front, frame.data, frame.length) != 0){ return false; }
                 fr_shock = mbr_dbc_f_shock_data_fr_shock_decode(front.fr_shock);
                 fl_shock = mbr_dbc_f_shock_data_fl_shock_decode(front.fl_shock);
                 return true;
             }
-            case 0x201: {
+            case MBR_DBC_R_SHOCK_DATA_FRAME_ID: {
                 mbr_dbc_r_shock_data_t rear{};
                 if (mbr_dbc_r_shock_data_unpack(&rear, frame.data, frame.length) != 0){ return false; }
                 rr_shock = mbr_dbc_r_shock_data_rr_shock_decode(rear.rr_shock);
