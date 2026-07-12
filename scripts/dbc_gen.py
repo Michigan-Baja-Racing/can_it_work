@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 
 DBC_FILE = "dbc/MBR_DBC.dbc"
@@ -27,6 +26,7 @@ os.replace(
     os.path.join(SCRIPTS, FILENAME_BASE + ".h"),
     os.path.join(INCLUDE_DIR, FILENAME_BASE + ".h"),
 )
+
 os.replace(
     os.path.join(SCRIPTS, FILENAME_BASE + ".c"),
     os.path.join(SRC_DIR, FILENAME_BASE + ".c"),
