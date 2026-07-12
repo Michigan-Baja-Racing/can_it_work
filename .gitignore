@@ -14,3 +14,7 @@ build*/
 
 __cmake*
 *.log
+compile_commands.json
+
+mbr_dbc.h
+mbr_dbc.c
