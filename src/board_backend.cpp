@@ -271,21 +271,21 @@ void board_backend::handle_control_all_cmd(std::string_view payload) {
 bool board_backend::parse_frame(mbr_can_message& frame){
     switch (frame.id) {
             case MBR_DBC_RPM_DATA_FRAME_ID: {
-                mbr_dbc_rpm_data_t rpm{};
+                mbr_dbc_rpm_data_t rpm;
                 if (mbr_dbc_rpm_data_unpack(&rpm, frame.data, frame.length) != 0){ return false; }
                 engine_rpm = mbr_dbc_rpm_data_engine_rpm_decode(rpm.engine_rpm);
                 wheel_rpm  = mbr_dbc_rpm_data_wheel_rpm_decode(rpm.wheel_rpm);
                 return true;
             }
             case MBR_DBC_F_SHOCK_DATA_FRAME_ID: {
-                mbr_dbc_f_shock_data_t front{};
+                mbr_dbc_f_shock_data_t front;
                 if (mbr_dbc_f_shock_data_unpack(&front, frame.data, frame.length) != 0){ return false; }
                 fr_shock = mbr_dbc_f_shock_data_fr_shock_decode(front.fr_shock);
                 fl_shock = mbr_dbc_f_shock_data_fl_shock_decode(front.fl_shock);
                 return true;
             }
             case MBR_DBC_R_SHOCK_DATA_FRAME_ID: {
-                mbr_dbc_r_shock_data_t rear{};
+                mbr_dbc_r_shock_data_t rear;
                 if (mbr_dbc_r_shock_data_unpack(&rear, frame.data, frame.length) != 0){ return false; }
                 rr_shock = mbr_dbc_r_shock_data_rr_shock_decode(rear.rr_shock);
                 rl_shock = mbr_dbc_r_shock_data_rl_shock_decode(rear.rl_shock);
