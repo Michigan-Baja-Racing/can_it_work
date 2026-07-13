@@ -26,6 +26,7 @@ bool can_bus_backend::send_can(const mbr_can_message& msg) {
         CanFrame esp32frame = mbr_to_twai(msg);
         if (ESP32Can.writeFrame(esp32frame)){
             m_operational_ = true;
+            Serial.println("CAN frame sent");
             return true;
         }
         m_operational_ = false;

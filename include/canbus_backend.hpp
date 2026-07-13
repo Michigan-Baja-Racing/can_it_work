@@ -25,7 +25,7 @@ struct mbr_can_message {
 // canbus_backend.hpp
 class can_bus_backend {
 public:
-    bool start_can();
+    [[nodiscard]] bool start_can();
     bool send_can(const mbr_can_message& msg);
     [[nodiscard]] std::optional<mbr_can_message> receive_can();
     [[nodiscard]] bool is_running() const { return m_running_; }

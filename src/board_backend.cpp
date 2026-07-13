@@ -32,9 +32,11 @@ void board_backend::initialize() {
     cleanup_clients();
     if (!m_sd_.init_sd()) {
         Serial.println("SD init fail");
-        return;
     }
-    m_canbus_.start_can();
+
+    if (!m_canbus_.start_can()) {
+        Serial.println("CAN init fail");
+    }
 }
 
 // Runs the backend
@@ -55,8 +57,8 @@ void board_backend::run() {
         }
     }
 
-    wheel_rpm  = m_wheel_rc_.get_rpm(esp_timer_get_time(), digitalRead(32)) / 2;
-    engine_rpm = m_engine_rc_.get_rpm(esp_timer_get_time(), digitalRead(33));
+    //wheel_rpm  = m_wheel_rc_.get_rpm(esp_timer_get_time(), digitalRead(32)) / 2;
+    //engine_rpm = m_engine_rc_.get_rpm(esp_timer_get_time(), digitalRead(33));
 
     // This if statement is the bundling and sending of the data
     // This shouldn't change unless we add a new method of sending data
@@ -65,6 +67,7 @@ void board_backend::run() {
     // Currently sending once every 50,000 microseconds, or 50 ms
     if ((now - m_last_send > 50000LL) && m_is_time_synced_) {
         snprintf(m_msg_, sizeof(m_msg_), "T %llu W %f E %f FL %f FR %f RL %f RR %f\n", get_real_time(), wheel_rpm, engine_rpm, fl_shock, fr_shock, rl_shock, rr_shock);
+        //Serial.println(m_msg_);
         send_data(m_msg_);
         if (m_sd_.is_open && m_sd_.is_write) { m_sd_.write_sd(m_msg_); }
         m_last_send = now;
@@ -256,6 +259,7 @@ void board_backend::handle_control_all_cmd(std::string_view payload) {
             msg.extended = MBR_DBC_BUS_START_STOP_IS_EXTENDED;
             msg.length = MBR_DBC_BUS_START_STOP_LENGTH;
             mbr_dbc_bus_start_stop_pack(msg.data, &handle, MBR_DBC_BUS_START_STOP_LENGTH);
+            Serial.printf("msg is being sent maybe %d\n", handle.bus_handle);
             m_canbus_.send_can(msg);
             break;
         }
